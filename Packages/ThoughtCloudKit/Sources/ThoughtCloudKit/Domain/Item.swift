@@ -53,6 +53,33 @@ public struct EventInfo: Codable, Hashable, Sendable {
     }
 }
 
+/// One step of a todo. Added only while editing a todo, never at capture.
+public struct Subtask: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    public var title: String
+    public var createdAt: Date
+    public var completedAt: Date?
+
+    public init(id: UUID = UUID(), title: String, createdAt: Date, completedAt: Date? = nil) {
+        self.id = id
+        self.title = title
+        self.createdAt = createdAt
+        self.completedAt = completedAt
+    }
+
+    public var isCompleted: Bool { completedAt != nil }
+}
+
+public struct SubtaskProgress: Hashable, Sendable {
+    public var done: Int
+    public var total: Int
+
+    public init(done: Int, total: Int) {
+        self.done = done
+        self.total = total
+    }
+}
+
 /// A single captured thing. One type for all kinds so that switching kind or
 /// promoting a thought never loses data.
 public struct Item: Identifiable, Codable, Hashable, Sendable {
@@ -70,6 +97,8 @@ public struct Item: Identifiable, Codable, Hashable, Sendable {
     /// Whether `dueDate` carries a meaningful time of day.
     public var dueHasTime: Bool
     public var completedAt: Date?
+    /// Ordered steps. Kept if the kind changes, but only used by todos.
+    public var subtasks: [Subtask]
 
     // Review (kept even if kind changes, so history survives round trips)
     public var review: ReviewState?
@@ -99,6 +128,7 @@ public struct Item: Identifiable, Codable, Hashable, Sendable {
         self.dueDate = dueDate
         self.dueHasTime = dueHasTime
         self.completedAt = nil
+        self.subtasks = []
         self.review = kind == .review ? ReviewState(nextReviewAt: createdAt) : nil
         self.event = nil
         self.archivedAt = nil
@@ -108,6 +138,10 @@ public struct Item: Identifiable, Codable, Hashable, Sendable {
     /// Shows up in the Review deck.
     public var isReviewable: Bool { (kind == .review || kind == .event) && review != nil }
     public var isArchived: Bool { archivedAt != nil }
+
+    public var subtaskProgress: SubtaskProgress {
+        SubtaskProgress(done: subtasks.filter(\.isCompleted).count, total: subtasks.count)
+    }
 
     public var displayTitle: String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -123,6 +157,32 @@ public struct Item: Identifiable, Codable, Hashable, Sendable {
             review = ReviewState(nextReviewAt: now)
         }
         updatedAt = now
+    }
+}
+
+extension Item {
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, title, body, categoryIDs, createdAt, updatedAt
+        case dueDate, dueHasTime, completedAt, subtasks, review, event, archivedAt
+    }
+
+    /// Files written before subtasks existed have no `subtasks` key.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        kind = try c.decode(ItemKind.self, forKey: .kind)
+        title = try c.decode(String.self, forKey: .title)
+        body = try c.decode(String.self, forKey: .body)
+        categoryIDs = try c.decode([UUID].self, forKey: .categoryIDs)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        dueDate = try c.decodeIfPresent(Date.self, forKey: .dueDate)
+        dueHasTime = try c.decode(Bool.self, forKey: .dueHasTime)
+        completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
+        subtasks = try c.decodeIfPresent([Subtask].self, forKey: .subtasks) ?? []
+        review = try c.decodeIfPresent(ReviewState.self, forKey: .review)
+        event = try c.decodeIfPresent(EventInfo.self, forKey: .event)
+        archivedAt = try c.decodeIfPresent(Date.self, forKey: .archivedAt)
     }
 }
 

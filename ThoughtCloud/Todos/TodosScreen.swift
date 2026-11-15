@@ -130,6 +130,15 @@ struct TodoRow: View {
                             .font(.caption)
                             .foregroundStyle(overdue ? Theme.danger : Theme.dim)
                     }
+                    let progress = item.subtaskProgress
+                    if progress.total > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "checklist")
+                            Text("\(progress.done)/\(progress.total)")
+                        }
+                        .font(.caption)
+                            .foregroundStyle(progress.done == progress.total ? ItemKind.todo.color : Theme.dim)
+                    }
                     if !library.linkedItems(of: item.id).isEmpty {
                         Image(systemName: "link").font(.caption2).foregroundStyle(Theme.dim)
                     }
