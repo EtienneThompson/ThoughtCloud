@@ -14,6 +14,8 @@ struct ItemDetailSheet: View {
     @State private var confirmDelete = false
     @State private var newCategoryName = ""
     @State private var showNewCategory = false
+    @State private var newSubtask = ""
+    @FocusState private var newSubtaskFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -67,7 +69,9 @@ struct ItemDetailSheet: View {
             categoriesSection(item)
 
             switch item.kind {
-            case .todo: todoSection(item)
+            case .todo:
+                todoSection(item)
+                subtasksSection(item)
             case .review: reviewSection(item)
             case .thought: thoughtSection(item)
             case .event: eventSections(item)
@@ -132,6 +136,36 @@ struct ItemDetailSheet: View {
                 Toggle("Include time", isOn: Binding(get: { item.dueHasTime }, set: { library.setDueDate(itemID, due, hasTime: $0) }))
                 DatePicker("Due", selection: Binding(get: { due }, set: { library.setDueDate(itemID, $0, hasTime: item.dueHasTime) }),
                            displayedComponents: item.dueHasTime ? [.date, .hourAndMinute] : [.date])
+            }
+        }
+    }
+
+    private func subtasksSection(_ item: Item) -> some View {
+        let progress = item.subtaskProgress
+        return Section {
+            ForEach(item.subtasks) { subtask in
+                SubtaskRow(itemID: itemID, subtask: subtask)
+            }
+            .onDelete { offsets in
+                for index in offsets { library.deleteSubtask(itemID, item.subtasks[index].id) }
+            }
+            .onMove { library.moveSubtasks(itemID, from: $0, to: $1) }
+            HStack(spacing: 10) {
+                Image(systemName: "plus.circle").font(.system(size: 20)).foregroundStyle(Theme.dim)
+                TextField("Add subtask", text: $newSubtask)
+                    .focused($newSubtaskFocused)
+                    .submitLabel(.next)
+                    .onSubmit {
+                        library.addSubtask(to: itemID, title: newSubtask)
+                        newSubtask = ""
+                        newSubtaskFocused = true
+                    }
+            }
+        } header: {
+            HStack {
+                Text("Subtasks")
+                Spacer()
+                if progress.total > 0 { Text("\(progress.done)/\(progress.total)") }
             }
         }
     }
@@ -225,6 +259,45 @@ struct ItemDetailSheet: View {
             } label: {
                 Label("Link to…", systemImage: "link")
             }
+        }
+    }
+}
+
+struct SubtaskRow: View {
+    @Environment(Library.self) private var library
+    let itemID: UUID
+    let subtask: Subtask
+    @State private var title = ""
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button { library.toggleSubtask(itemID, subtask.id) } label: {
+                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(subtask.isCompleted ? ItemKind.todo.color : Theme.dim)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            TextField("Subtask", text: $title, axis: .vertical)
+                .strikethrough(subtask.isCompleted)
+                .foregroundStyle(subtask.isCompleted ? Theme.dim : Theme.text)
+                .onSubmit(commit)
+        }
+        .onAppear { title = subtask.title }
+        .onChange(of: subtask.title) { _, new in title = new }
+        .onDisappear(perform: commit)
+        .onChange(of: title) { _, new in
+            // Vertical text fields insert a newline on return; treat it as done editing.
+            if new.contains("\n") { title = new.replacingOccurrences(of: "\n", with: ""); commit() }
+        }
+    }
+
+    private func commit() {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            title = subtask.title
+        } else if trimmed != subtask.title {
+            library.renameSubtask(itemID, subtask.id, title: trimmed)
         }
     }
 }

@@ -15,6 +15,10 @@ struct NodeSheet: View {
             switch node.id {
             case .item(let id):
                 if let item = library.item(id) { itemContent(item) }
+            case .subtask(let todoID, let subtaskID):
+                if let todo = library.item(todoID), let subtask = todo.subtasks.first(where: { $0.id == subtaskID }) {
+                    subtaskContent(subtask, of: todo)
+                }
             case .category(let id):
                 if let category = library.category(id) {
                     hubContent(title: "\(category.emoji) \(category.name)", color: Color(hex: category.colorHex), items: library.items(inCategory: id), categoryID: id)
@@ -68,6 +72,25 @@ struct NodeSheet: View {
         }
     }
 
+    // MARK: - Subtask
+
+    @ViewBuilder
+    private func subtaskContent(_ subtask: Subtask, of todo: Item) -> some View {
+        let style = library.style(for: todo)
+        HStack(spacing: 6) {
+            Text("Subtask").font(.caption.weight(.semibold)).foregroundStyle(Theme.dim)
+            CategoryPills(style: style, compact: true)
+        }
+        Text(subtask.title).font(.title3.weight(.semibold)).lineLimit(3)
+            .strikethrough(subtask.isCompleted)
+        Text(subtask.isCompleted ? "Done" : "Open").font(.footnote).foregroundStyle(Theme.dim)
+        linked
+        HStack(spacing: 8) {
+            action(subtask.isCompleted ? "Reopen" : "Mark done", primary: style.primary) { library.toggleSubtask(todo.id, subtask.id) }
+            action("Open todo") { app.detailItemID = todo.id }
+        }
+    }
+
     private func reselect(_ id: UUID) {
         DispatchQueue.main.async { cloud.select(.item(id)) }
     }
@@ -75,9 +98,11 @@ struct NodeSheet: View {
     private func detail(for item: Item) -> String {
         switch item.kind {
         case .todo:
-            if item.isCompleted { return "Done" }
-            guard let due = item.dueDate else { return "No due date · someday" }
-            return (node.isOverdue ? "Overdue · " : "Due ") + due.shortRelative(includeTime: item.dueHasTime)
+            let progress = item.subtaskProgress
+            let steps = progress.total > 0 ? " · \(progress.done)/\(progress.total) subtasks" : ""
+            if item.isCompleted { return "Done" + steps }
+            guard let due = item.dueDate else { return "No due date · someday" + steps }
+            return (node.isOverdue ? "Overdue · " : "Due ") + due.shortRelative(includeTime: item.dueHasTime) + steps
         case .thought:
             return "Captured " + item.createdAt.shortRelative(includeTime: false)
         case .review:
@@ -142,7 +167,7 @@ struct NodeSheet: View {
     private func chipColor(_ node: GraphNode) -> Color {
         switch node.role {
         case .hub(_, let hex): Color(hex: hex)
-        case .item(_, let style): style.primary
+        case .item(_, let style), .subtask(let style): style.primary
         }
     }
 

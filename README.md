@@ -17,7 +17,7 @@ design/                        HTML mockups from the design phase
 
 | Area | Type | Responsibility |
 |---|---|---|
-| Domain | `Item`, `ItemCategory`, `ItemLink`, `LibrarySnapshot` | Plain `Codable` values |
+| Domain | `Item`, `Subtask`, `ItemCategory`, `ItemLink`, `LibrarySnapshot` | Plain `Codable` values |
 | Persistence | `LibraryPersisting` (protocol) → `JSONFilePersistence`, `InMemoryPersistence` | Load/save a snapshot |
 | Time | `DateProviding` (protocol) | "Now", injectable in tests |
 | Capture | `CaptureParser` + `DateDetecting` (protocol) → `SystemDateDetector` | Text → title/body/#tags/date/kind guess |

@@ -21,6 +21,7 @@ nonisolated enum CloudRenderer {
 
     static let hubRadius = 14.0
     static let itemRadius = 6.0
+    static let subtaskRadius = 3.0
 
     static func draw(_ ctx: inout GraphicsContext, _ f: Frame) {
         let zoom = f.camera.zoom
@@ -36,8 +37,14 @@ nonisolated enum CloudRenderer {
             var path = Path()
             path.move(to: a)
             path.addLine(to: b)
-            let opacity: Double = lit ? 0.6 : hasSelection ? 0.04 : (edge.kind == .membership ? 0.11 : 0.24)
-            let style = StrokeStyle(lineWidth: lit ? 1.4 : (edge.kind == .membership ? 0.8 : 1), dash: edge.kind == .link && !lit ? [3, 3] : [])
+            let resting: Double = switch edge.kind {
+            case .membership: 0.11
+            case .link: 0.24
+            case .subtask: 0.2
+            }
+            let opacity: Double = lit ? 0.6 : hasSelection ? 0.04 : resting
+            let width: Double = lit ? 1.4 : (edge.kind == .link ? 1 : 0.8)
+            let style = StrokeStyle(lineWidth: width, dash: edge.kind == .link && !lit ? [3, 3] : [])
             ctx.stroke(path, with: .color(.white.opacity(opacity)), style: style)
         }
 
@@ -96,6 +103,26 @@ nonisolated enum CloudRenderer {
                     var lc = c
                     lc.opacity *= la
                     drawLabel(&lc, node.label, at: CGPoint(x: p.x, y: p.y + s + 4), faded: node.isFaded)
+                }
+
+            case .subtask(let style):
+                let s = max(1.6, subtaskRadius * zoom)
+                let dot = Path(ellipseIn: CGRect(x: p.x - s, y: p.y - s, width: s * 2, height: s * 2))
+                if node.isFaded {
+                    c.stroke(dot, with: .color(style.primary.opacity(0.5)), lineWidth: 1)
+                } else {
+                    c.fill(dot, with: .color(style.primary))
+                }
+                if node.id == f.selection {
+                    let rr = s + 3
+                    c.stroke(Path(ellipseIn: CGRect(x: p.x - rr, y: p.y - rr, width: rr * 2, height: rr * 2)), with: .color(.white), lineWidth: 1.5)
+                }
+                // Steps only get labels once zoomed well in, or when their todo is selected.
+                let la = f.highlighted.contains(node.id) ? max(labelOpacity, 0.95) : max(0, labelOpacity * 2 - 1)
+                if la > 0 {
+                    var lc = c
+                    lc.opacity *= la
+                    drawLabel(&lc, node.label, at: CGPoint(x: p.x, y: p.y + s + 3), faded: node.isFaded)
                 }
             }
         }

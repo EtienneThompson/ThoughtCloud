@@ -6,6 +6,8 @@ public enum GraphNodeID: Hashable, Sendable {
     case category(UUID)
     case inbox
     case item(UUID)
+    /// A todo's step, drawn as a satellite around its todo.
+    case subtask(todo: UUID, subtask: UUID)
 
     public var itemID: UUID? {
         if case .item(let id) = self { return id }
@@ -22,6 +24,8 @@ public struct GraphNode: Identifiable, Hashable, Sendable {
     public enum Role: Hashable, Sendable {
         case hub(emoji: String, colorHex: String)
         case item(kind: ItemKind, style: CategoryStyle)
+        /// Coloured like its todo.
+        case subtask(style: CategoryStyle)
     }
 
     public var id: GraphNodeID
@@ -45,6 +49,11 @@ public struct GraphNode: Identifiable, Hashable, Sendable {
         return false
     }
 
+    public var isSubtask: Bool {
+        if case .subtask = role { return true }
+        return false
+    }
+
     static func hub(_ id: GraphNodeID) -> GraphNode {
         GraphNode(id: id, label: "hub", role: .hub(emoji: "•", colorHex: CategoryPalette.inboxHex))
     }
@@ -60,6 +69,8 @@ public struct GraphEdge: Hashable, Sendable {
         case membership
         /// Item-to-item connection (promoted or manual).
         case link
+        /// Todo to one of its subtasks.
+        case subtask
     }
 
     public var a: GraphNodeID
@@ -136,6 +147,13 @@ public enum GraphBuilder {
                 isOverdue: sectioner.isOverdue(item, now: now),
                 isFaded: item.isCompleted
             ))
+            if item.kind == .todo {
+                for subtask in item.subtasks where options.showCompleted || !subtask.isCompleted {
+                    let subID = GraphNodeID.subtask(todo: item.id, subtask: subtask.id)
+                    nodes.append(GraphNode(id: subID, label: subtask.title, role: .subtask(style: style), isFaded: item.isCompleted || subtask.isCompleted))
+                    edges.append(GraphEdge(a: id, b: subID, kind: .subtask))
+                }
+            }
             let categories = style.categories
             if categories.isEmpty {
                 needsInbox = true

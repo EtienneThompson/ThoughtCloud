@@ -228,6 +228,46 @@ public final class Library {
         }
     }
 
+    // MARK: - Subtasks
+
+    @discardableResult
+    public func addSubtask(to id: UUID, title: String) -> Subtask? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, item(id) != nil else { return nil }
+        let subtask = Subtask(title: trimmed, createdAt: now)
+        mutate(id) { $0.subtasks.append(subtask) }
+        return subtask
+    }
+
+    public func renameSubtask(_ id: UUID, _ subtaskID: UUID, title: String) {
+        mutateSubtask(id, subtaskID) { $0.title = title }
+    }
+
+    public func toggleSubtask(_ id: UUID, _ subtaskID: UUID) {
+        let now = now
+        mutateSubtask(id, subtaskID) { $0.completedAt = $0.completedAt == nil ? now : nil }
+    }
+
+    public func deleteSubtask(_ id: UUID, _ subtaskID: UUID) {
+        mutate(id) { $0.subtasks.removeAll { $0.id == subtaskID } }
+    }
+
+    public func moveSubtasks(_ id: UUID, from source: IndexSet, to destination: Int) {
+        mutate(id) { item in
+            let moving = source.sorted().filter(item.subtasks.indices.contains).map { item.subtasks[$0] }
+            let insertAt = destination - source.filter { $0 < destination }.count
+            for index in source.sorted(by: >) where item.subtasks.indices.contains(index) {
+                item.subtasks.remove(at: index)
+            }
+            item.subtasks.insert(contentsOf: moving, at: min(max(insertAt, 0), item.subtasks.count))
+        }
+    }
+
+    private func mutateSubtask(_ id: UUID, _ subtaskID: UUID, _ change: (inout Subtask) -> Void) {
+        guard let subIndex = item(id)?.subtasks.firstIndex(where: { $0.id == subtaskID }) else { return }
+        mutate(id) { change(&$0.subtasks[subIndex]) }
+    }
+
     public func grade(_ id: UUID, _ grade: ReviewGrade) {
         let now = now
         mutate(id) { item in

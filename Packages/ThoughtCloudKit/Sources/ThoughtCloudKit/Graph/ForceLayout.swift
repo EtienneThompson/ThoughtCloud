@@ -11,6 +11,9 @@ public struct ForceLayout: Sendable {
         public var membershipStrength = 0.08
         public var linkLength = 70.0
         public var linkStrength = 0.03
+        public var subtaskRepulsion = 90.0
+        public var subtaskLength = 20.0
+        public var subtaskStrength = 0.15
         public var gravity = 0.004
         public var damping = 0.55
         public var alphaDecay = 0.985
@@ -27,6 +30,7 @@ public struct ForceLayout: Sendable {
     private var pos: [GraphPoint] = []
     private var vel: [GraphPoint] = []
     private var isHub: [Bool] = []
+    private var isSubtask: [Bool] = []
     private var pinned: [Int: GraphPoint] = [:]
     private var springs: [(Int, Int, Double, Double)] = []
     private var rng: SplitMix64
@@ -74,6 +78,7 @@ public struct ForceLayout: Sendable {
         order = graph.nodes.map(\.id)
         index = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
         isHub = graph.nodes.map(\.isHub)
+        isSubtask = graph.nodes.map(\.isSubtask)
         pos = Array(repeating: .zero, count: order.count)
         vel = order.map { oldVelocities[$0] ?? .zero }
         pinned = [:]
@@ -96,9 +101,11 @@ public struct ForceLayout: Sendable {
 
         springs = graph.edges.compactMap { edge in
             guard let a = index[edge.a], let b = index[edge.b] else { return nil }
-            return edge.kind == .membership
-                ? (a, b, parameters.membershipLength, parameters.membershipStrength)
-                : (a, b, parameters.linkLength, parameters.linkStrength)
+            switch edge.kind {
+            case .membership: return (a, b, parameters.membershipLength, parameters.membershipStrength)
+            case .link: return (a, b, parameters.linkLength, parameters.linkStrength)
+            case .subtask: return (a, b, parameters.subtaskLength, parameters.subtaskStrength)
+            }
         }
 
         // Place the rest beside an already-placed neighbour (repeat to handle chains).
@@ -158,7 +165,9 @@ public struct ForceLayout: Sendable {
                     d = randomOffset(radius: 0.5...1)
                     dist2 = 1
                 }
-                let strength = (isHub[i] || isHub[j] ? p.hubRepulsion : p.itemRepulsion) * alpha / dist2
+                // Subtasks push gently so they ring their todo instead of drifting off.
+                let base = isSubtask[i] || isSubtask[j] ? p.subtaskRepulsion : isHub[i] || isHub[j] ? p.hubRepulsion : p.itemRepulsion
+                let strength = base * alpha / dist2
                 let force = d / dist2.squareRoot() * strength
                 vel[i] -= force
                 vel[j] += force

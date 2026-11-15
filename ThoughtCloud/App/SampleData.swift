@@ -19,6 +19,7 @@ enum SampleData {
 
         let deck = library.add(kind: .todo, title: "Send Q4 deck to Priya", categoryIDs: [work.id], date: DetectedDate(date: days(-2), hasTime: false, matchedText: ""))
         let slides = library.add(kind: .todo, title: "Prep slides for the sync", categoryIDs: [work.id], date: DetectedDate(date: days(3), hasTime: false, matchedText: ""))
+        for step in ["Pull metrics", "Draft outline"] { library.addSubtask(to: slides.id, title: step) }
         library.add(kind: .todo, title: "Book 1:1 with Alex", categoryIDs: [work.id])
         let standup = library.add(kind: .thought, title: "What if standup was async on Fridays?", categoryIDs: [work.id])
         let dashboard = library.add(kind: .thought, title: "On-call load dashboard per person", categoryIDs: [work.id])
@@ -26,6 +27,10 @@ enum SampleData {
         library.add(kind: .review, title: "Priya", body: "Team: 6 people, Berlin\nPartner: Dan\nKids: Ava (6), Leo (3)", categoryIDs: [work.id])
 
         let flights = library.add(kind: .todo, title: "Book flights for December", categoryIDs: [travel.id, home.id], date: DetectedDate(date: days(2), hasTime: false, matchedText: ""))
+        for step in ["Compare TAP and United", "Check points balance", "Pick seats", "Add to calendar"] {
+            library.addSubtask(to: flights.id, title: step)
+        }
+        if let first = library.item(flights.id)?.subtasks.first { library.toggleSubtask(flights.id, first.id) }
         let trip = library.add(kind: .review, title: "Lisbon trip", body: "- Dec 18: TP 214 · JFK 07:40 → LIS\n- Dec 18: Casa Amora, check-in 3pm\n- Dec 21: Train to Porto 09:05\n- Dec 24: Fly home OPO 11:15", categoryIDs: [travel.id], date: DetectedDate(date: days(40), hasTime: false, matchedText: ""))
         library.add(kind: .thought, title: "Pastéis at Manteigaria", categoryIDs: [travel.id])
 
