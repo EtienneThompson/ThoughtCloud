@@ -20,6 +20,8 @@ public final class CaptureModel {
     @ObservationIgnored private let presetCategoryIDs: [UUID]
     @ObservationIgnored private let presetKind: ItemKind?
     private var chosenKind: ItemKind?
+    /// Event times picked by hand; they win over any date in the text.
+    private var manualEvent: EventInfo?
     private var manualCategoryIDs: [UUID]
 
     public init(library: Library, parser: CaptureParser, presetCategoryIDs: [UUID] = [], presetKind: ItemKind? = nil) {
@@ -41,6 +43,7 @@ public final class CaptureModel {
     /// For events: the start/end that will be saved.
     public var eventPreview: EventInfo? {
         guard kind == .event else { return nil }
+        if let manualEvent { return manualEvent }
         return EventInfo.make(from: detectedDate, now: library.now, calendar: library.calendar)
     }
 
@@ -94,7 +97,17 @@ public final class CaptureModel {
         kindWasChosen = true
     }
 
-    public func dismissDate() { dateDismissed = true }
+    public func dismissDate() {
+        dateDismissed = true
+        manualEvent = nil
+    }
+
+    public func setEventTimes(start: Date, end: Date, isAllDay: Bool) {
+        let calendar = library.calendar
+        let start = isAllDay ? calendar.startOfDay(for: start) : start
+        let end = isAllDay ? calendar.startOfDay(for: end) : end
+        manualEvent = EventInfo(start: start, end: end, isAllDay: isAllDay)
+    }
 
     public func toggleCategory(_ id: UUID) {
         if let index = manualCategoryIDs.firstIndex(of: id) {
@@ -118,7 +131,7 @@ public final class CaptureModel {
         for id in library.categoryIDs(forHashtags: draft.hashtags) where !ids.contains(id) {
             ids.append(id)
         }
-        let item = library.add(kind: kind, title: draft.title, body: draft.body, categoryIDs: ids, date: detectedDate, addToCalendar: addToCalendar)
+        let item = library.add(kind: kind, title: draft.title, body: draft.body, categoryIDs: ids, date: detectedDate, event: eventPreview, addToCalendar: addToCalendar)
         reset()
         return item
     }
@@ -128,6 +141,7 @@ public final class CaptureModel {
         chosenKind = presetKind
         kindWasChosen = presetKind != nil
         dateDismissed = false
+        manualEvent = nil
         addToCalendar = true
         manualCategoryIDs = presetCategoryIDs
     }

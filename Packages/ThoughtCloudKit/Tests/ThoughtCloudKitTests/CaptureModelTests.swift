@@ -79,6 +79,56 @@ struct CaptureModelTests {
         #expect(try #require(model.save()).dueDate == nil)
     }
 
+    @Test func eventTimesCanBeSetBeforeSaving() throws {
+        model.chooseKind(.event)
+        model.text = "Dinner with Sam"
+        #expect(model.eventPreview?.isAllDay == true)
+        model.setEventTimes(start: day(20, hour: 19), end: day(20, hour: 21), isAllDay: false)
+        #expect(model.eventPreview?.start == day(20, hour: 19))
+        let item = try #require(model.save())
+        #expect(item.event?.start == day(20, hour: 19))
+        #expect(item.event?.end == day(20, hour: 21))
+        #expect(item.event?.isAllDay == false)
+    }
+
+    @Test func manualEventTimesWinOverTheDetectedDate() throws {
+        model.chooseKind(.event)
+        model.setEventTimes(start: day(20, hour: 19), end: day(20, hour: 20), isAllDay: false)
+        model.text = "Dinner tomorrow at 10"
+        #expect(model.eventPreview?.start == day(20, hour: 19))
+        #expect(try #require(model.save()).event?.start == day(20, hour: 19))
+    }
+
+    @Test func allDayManualEventsSnapToTheStartOfTheDay() {
+        model.chooseKind(.event)
+        model.setEventTimes(start: day(20, hour: 19), end: day(21, hour: 8), isAllDay: true)
+        #expect(model.eventPreview?.start == day(20, hour: 0))
+        #expect(model.eventPreview?.end == day(21, hour: 0))
+    }
+
+    @Test func manualEventEndNeverPrecedesStart() {
+        model.chooseKind(.event)
+        model.setEventTimes(start: day(20, hour: 19), end: day(20, hour: 18), isAllDay: false)
+        #expect(model.eventPreview?.end == day(20, hour: 19))
+    }
+
+    @Test func dismissingTheDateClearsManualEventTimes() {
+        model.chooseKind(.event)
+        model.setEventTimes(start: day(20, hour: 19), end: day(20, hour: 20), isAllDay: false)
+        model.dismissDate()
+        #expect(model.eventPreview?.start == day(10, hour: 0))
+        #expect(model.eventPreview?.isAllDay == true)
+    }
+
+    @Test func manualEventTimesAreClearedForTheNextCapture() throws {
+        model.chooseKind(.event)
+        model.text = "Dinner"
+        model.setEventTimes(start: day(20, hour: 19), end: day(20, hour: 20), isAllDay: false)
+        _ = try #require(model.save())
+        model.chooseKind(.event)
+        #expect(model.eventPreview?.start == day(10, hour: 0))
+    }
+
     @Test func emptyTextDoesNotSave() {
         model.text = "   "
         #expect(model.save() == nil)

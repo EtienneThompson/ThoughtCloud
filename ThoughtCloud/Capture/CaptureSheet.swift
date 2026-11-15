@@ -7,6 +7,7 @@ struct CaptureSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: CaptureModel
     @State private var savedCount = 0
+    @State private var editingEventTimes = false
     @FocusState private var focused: Bool
 
     init(request: CaptureRequest) {
@@ -66,16 +67,50 @@ struct CaptureSheet: View {
     @ViewBuilder
     private var dateRow: some View {
         if let event = model.eventPreview {
-            HStack(spacing: 6) {
-                chip("📅 " + event.whenText, color: ItemKind.event.color, dismissible: model.detectedDate != nil) { model.dismissDate() }
-                chip(model.addToCalendar ? "Calendar ✓" : "Calendar", color: model.addToCalendar ? Theme.text : Theme.dim, symbol: "calendar") {
-                    model.addToCalendar.toggle()
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    chip("📅 " + event.whenText, color: ItemKind.event.color, symbol: editingEventTimes ? "chevron.up" : "chevron.down") {
+                        editingEventTimes.toggle()
+                    }
+                    chip(model.addToCalendar ? "Calendar ✓" : "Calendar", color: model.addToCalendar ? Theme.text : Theme.dim, symbol: "calendar") {
+                        model.addToCalendar.toggle()
+                    }
                 }
+                if editingEventTimes { eventTimesEditor(event) }
             }
         } else if let date = model.detectedDate {
             let prefix = model.kind == .review ? "Until " : "📅 "
             chip(prefix + date.date.shortRelative(includeTime: date.hasTime), color: model.kind.color, dismissible: true) { model.dismissDate() }
         }
+    }
+
+    private func eventTimesEditor(_ event: EventInfo) -> some View {
+        let components: DatePickerComponents = event.isAllDay ? [.date] : [.date, .hourAndMinute]
+        return VStack(spacing: 6) {
+            Toggle("All day", isOn: Binding(
+                get: { event.isAllDay },
+                set: { allDay in
+                    let start = allDay ? event.start : Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: event.start) ?? event.start
+                    model.setEventTimes(start: start, end: allDay ? event.end : start.addingTimeInterval(3600), isAllDay: allDay)
+                }
+            ))
+            DatePicker("Starts", selection: Binding(
+                get: { event.start },
+                set: { start in
+                    // Keep the duration when the start moves.
+                    let duration = event.end.timeIntervalSince(event.start)
+                    model.setEventTimes(start: start, end: start.addingTimeInterval(duration), isAllDay: event.isAllDay)
+                }
+            ), displayedComponents: components)
+            DatePicker("Ends", selection: Binding(
+                get: { event.end },
+                set: { model.setEventTimes(start: event.start, end: $0, isAllDay: event.isAllDay) }
+            ), in: event.start..., displayedComponents: components)
+        }
+        .font(.subheadline)
+        .tint(ItemKind.event.color)
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(Theme.card2, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func chip(_ title: String, color: Color, symbol: String? = nil, dismissible: Bool = false, action: @escaping () -> Void) -> some View {
