@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --todo: #4FA3FF; --thought: #FFB547; --review: #B07CFF;
+    --ios-bg: #0B0B0F; --ios-card: #1A1A21; --ios-card2: #23232C;
+    --ios-text: #F4F4F7; --ios-dim: #8E8E99; --ios-line: #2C2C36;
+    --work: #64D2FF; --home: #30D158; --health: #FF6482; --learn: #BF5AF2; --proj: #FF9F0A;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "SF Pro Text", var(--font-sans), system-ui, sans-serif; }
+  .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 20px; }
+  .cell { display: flex; flex-direction: column; align-items: center; }
+  .label { margin-top: 12px; width: 100%; max-width: 330px; }
+  .label h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--foreground); }
+  .label h3 span { display: inline-block; min-width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 10px; background: var(--secondary); color: var(--secondary-foreground); font-size: 11px; margin-right: 6px; }
+  .label p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted-foreground); }
+  .new { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--accent); color: var(--accent-foreground); margin-left: 6px; vertical-align: 1px; }
+
+  .phone { width: 330px; height: 680px; border-radius: 48px; background: #000; padding: 10px; box-shadow: 0 0 0 1.5px #3a3a44, 0 12px 40px rgba(0,0,0,.35); position: relative; }
+  .screen { width: 100%; height: 100%; border-radius: 38px; background: var(--ios-bg); color: var(--ios-text); overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .status { height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 6px 26px 0; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .island { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 96px; height: 28px; background: #000; border-radius: 20px; z-index: 5; }
+  .content { flex: 1; padding: 4px 18px 0; overflow: hidden; position: relative; }
+  .title { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; margin: 6px 0 2px; }
+  .sub { color: var(--ios-dim); font-size: 13px; margin-bottom: 12px; }
+  .tabs { height: 78px; flex-shrink: 0; border-top: 0.5px solid var(--ios-line); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 8px; background: rgba(20,20,26,.92); }
+  .tab { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--ios-dim); gap: 3px; width: 50px; }
+  .tab.on { color: var(--ios-text); }
+  .tab i { width: 22px; height: 22px; display: block; border-radius: 6px; }
+  .fab { width: 54px; height: 54px; border-radius: 27px; background: linear-gradient(135deg, var(--todo), var(--review)); margin-top: -22px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 300; color: #fff; box-shadow: 0 6px 20px rgba(130,120,255,.45); }
+
+  /* category chips (shared) */
+  .fchips { display: flex; gap: 6px; overflow: hidden; margin: 0 -18px 12px; padding: 0 18px; }
+  .fc { white-space: nowrap; padding: 6px 10px; border-radius: 15px; font-size: 12px; background: var(--ios-card); color: var(--ios-dim); flex-shrink: 0; }
+  .fc.on { background: var(--ios-text); color: #000; font-weight: 600; }
+  .fc b { font-weight: 600; opacity: .6; margin-left: 3px; }
+  .cat { color: var(--c); }
+  .catpill { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 2px 7px; border-radius: 8px; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); font-weight: 600; }
+
+  /* cloud */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .stat { background: var(--ios-card); border-radius: 14px; padding: 9px 10px; }
+  .stat b { display: block; font-size: 21px; font-weight: 700; }
+  .stat small { font-size: 10.5px; color: var(--ios-dim); }
+  .stat .dot { width: 8px; height: 8px; border-radius: 4px; display: inline-block; margin-right: 4px; }
+  .graph { background: var(--ios-card); border-radius: 18px; height: 272px; position: relative; overflow: hidden; }
+  .ghd { display: flex; justify-content: space-between; align-items: center; padding: 9px 10px 0 12px; font-size: 11px; color: var(--ios-dim); }
+  .seg { display: flex; background: var(--ios-card2); border-radius: 8px; padding: 2px; font-size: 10.5px; }
+  .seg span { padding: 3px 8px; border-radius: 6px; color: var(--ios-dim); }
+  .seg span.on { background: #3a3a46; color: var(--ios-text); font-weight: 600; }
+  .legend { position: absolute; left: 12px; bottom: 9px; font-size: 10px; color: var(--ios-dim); display: flex; gap: 10px; align-items: center; }
+  .legend i { display: inline-block; width: 8px; height: 8px; background: #bbb; margin-right: 4px; vertical-align: -1px; }
+  .colorby { position: absolute; right: 10px; bottom: 7px; font-size: 10px; color: var(--ios-dim); background: var(--ios-card2); padding: 3px 8px; border-radius: 8px; }
+  .next { margin-top: 10px; background: var(--ios-card); border-radius: 14px; padding: 11px 12px; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .next .pill { white-space: nowrap; margin-left: auto; font-size: 11px; padding: 4px 9px; border-radius: 10px; background: rgba(176,124,255,.18); color: var(--review); font-weight: 600; }
+
+  /* capture */
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+  .bgfaux { opacity: .5; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #1C1C24; border-radius: 26px 26px 0 0; padding: 10px 16px 0; }
+  .grab { width: 36px; height: 5px; border-radius: 3px; background: #444; margin: 0 auto 12px; }
+  .typeseg { display: flex; background: var(--ios-card2); border-radius: 12px; padding: 3px; margin-bottom: 12px; }
+  .typeseg div { flex: 1; text-align: center; font-size: 13px; padding: 7px 0; border-radius: 9px; color: var(--ios-dim); font-weight: 500; }
+  .typeseg .on { background: rgba(79,163,255,.2); color: var(--todo); font-weight: 600; }
+  .input { font-size: 19px; line-height: 1.35; min-height: 52px; }
+  .input .hl { color: var(--todo); background: rgba(79,163,255,.12); border-radius: 5px; padding: 0 3px; }
+  .input .hc { color: var(--work); background: color-mix(in srgb, var(--work) 15%, transparent); border-radius: 5px; padding: 0 3px; }
+  .caret { display: inline-block; width: 2px; height: 21px; background: var(--todo); vertical-align: -4px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .catrow { display: flex; gap: 6px; margin: 10px -16px 10px; padding: 0 16px; overflow: hidden; }
+  .cc { white-space: nowrap; flex-shrink: 0; font-size: 12px; padding: 6px 10px; border-radius: 14px; background: var(--ios-card2); color: var(--ios-dim); border: 1.5px solid transparent; }
+  .cc.on { border-color: var(--c); color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); font-weight: 600; }
+  .sendrow { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; }
+  .hint { font-size: 11px; color: var(--ios-dim); }
+  .send { width: 34px; height: 34px; border-radius: 17px; background: var(--todo); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .mic { width: 34px; height: 34px; border-radius: 17px; background: var(--ios-card2); display: flex; align-items: center; justify-content: center; }
+  .kbd { background: #2A2A32; margin: 0 -16px; padding: 8px 3px 26px; display: grid; gap: 9px; }
+  .krow { display: flex; justify-content: center; gap: 5px; }
+  .k { width: 26px; height: 38px; background: #4A4A54; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .k.w { width: 40px; background: #3A3A42; font-size: 11px; }
+  .k.sp { width: 150px; font-size: 12px; color: #bbb; }
+
+  /* category detail */
+  .back { color: var(--work); font-size: 15px; margin: 2px 0 8px; }
+  .chead { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .cicon { width: 52px; height: 52px; border-radius: 14px; background: color-mix(in srgb, var(--c) 22%, transparent); display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .chead .nm { font-size: 26px; font-weight: 700; color: var(--c); }
+  .chead .ct { font-size: 12px; color: var(--ios-dim); }
+  .edit { margin-left: auto; font-size: 13px; color: var(--ios-dim); }
+  .mix { height: 6px; border-radius: 3px; overflow: hidden; display: flex; margin: 12px 0 4px; }
+  .mixl { display: flex; gap: 12px; font-size: 10.5px; color: var(--ios-dim); margin-bottom: 12px; }
+  .mixl i { display: inline-block; width: 7px; height: 7px; border-radius: 4px; margin-right: 4px; }
+  .sec { font-size: 12px; font-weight: 600; color: var(--ios-dim); text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; display: flex; justify-content: space-between; }
+  .sec a { color: var(--ios-dim); text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .deckbtn { background: linear-gradient(135deg, #3A2C5C, #231B38); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .deckbtn small { display: block; font-size: 11px; color: var(--ios-dim); }
+  .deckbtn .go { margin-left: auto; width: 32px; height: 32px; border-radius: 16px; background: var(--review); color: #000; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .hscroll { display: flex; gap: 8px; margin-right: -18px; }
+  .mini { flex-shrink: 0; width: 132px; background: var(--ios-card); border-radius: 14px; padding: 10px; font-size: 12.5px; line-height: 1.35; border-top: 3px solid var(--c); }
+  .mini small { display: block; margin-top: 6px; color: var(--ios-dim); font-size: 10px; }
+
+  /* todos */
+  .row { display: flex; align-items: flex-start; gap: 11px; padding: 9px 0; border-bottom: 0.5px solid var(--ios-line); cursor: pointer; }
+  .check { width: 22px; height: 22px; border-radius: 11px; border: 2px solid #4a4a56; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #000; transition: all .15s; }
+  .row.done .check { background: var(--todo); border-color: var(--todo); }
+  .row.done .t { color: var(--ios-dim); text-decoration: line-through; }
+  .t { font-size: 15px; }
+  .meta { font-size: 11.5px; color: var(--ios-dim); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
+  .meta .due { color: #FF7A6B; }
+  .ghead { display: flex; justify-content: space-between; align-items: baseline; }
+  .grpby { font-size: 12px; color: var(--todo); }
+  .group { font-size: 12px; font-weight: 600; color: var(--ios-dim); text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 4px; }
+  .group.c { color: var(--c); text-transform: none; letter-spacing: 0; font-size: 13px; }
+
+  /* review */
+  .deck { position: relative; height: 318px; perspective: 1000px; }
+  .card { position: absolute; left: 0; right: 0; height: 290px; border-radius: 24px; }
+  .card.c3 { top: 22px; transform: scale(.9); background: #1E1A2A; }
+  .card.c2 { top: 11px; transform: scale(.95); background: #262035; }
+  .card.c1 { top: 0; background: linear-gradient(160deg, #3A2C5C, #231B38); box-shadow: 0 10px 30px rgba(0,0,0,.4); cursor: pointer; transform-style: preserve-3d; transition: transform .5s; border-top: 4px solid var(--c); }
+  .card.c1.flipped { transform: rotateY(180deg); }
+  .face { position: absolute; inset: 0; padding: 20px; backface-visibility: hidden; display: flex; flex-direction: column; }
+  .face.back { transform: rotateY(180deg); }
+  .q { font-size: 22px; font-weight: 650; line-height: 1.25; margin-top: 14px; letter-spacing: -.3px; }
+  .a { font-size: 15px; line-height: 1.5; margin-top: 12px; color: #ddd; }
+  .tap { margin-top: auto; text-align: center; font-size: 12px; color: var(--ios-dim); }
+  .seen { font-size: 11px; color: var(--ios-dim); margin-left: 6px; }
+  .grades { display: flex; gap: 8px; }
+  .g { flex: 1; text-align: center; padding: 11px 0; border-radius: 14px; font-size: 13px; font-weight: 600; }
+  .g small { display: block; font-size: 10px; font-weight: 500; opacity: .7; margin-top: 2px; }
+  .progress { height: 4px; background: var(--ios-card2); border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
+  .progress div { height: 100%; width: 37%; background: var(--review); }
+
+  /* thoughts */
+  .masonry { columns: 2; column-gap: 9px; }
+  .tc { break-inside: avoid; background: color-mix(in srgb, var(--c) 10%, var(--ios-card)); border-radius: 16px; padding: 11px 12px; margin-bottom: 9px; font-size: 13.5px; line-height: 1.4; border-top: 3px solid var(--c); position: relative; }
+  .tc .em { font-size: 15px; display: block; margin-bottom: 4px; }
+  .tc .when { font-size: 10.5px; color: var(--ios-dim); margin-top: 7px; display: flex; justify-content: space-between; }
+  .tc .when span:last-child { color: var(--c); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 1. CLOUD grouped by category -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content">
+        <div class="title">Cloud</div>
+        <div class="sub">Sunday, Nov 9 · 5 categories</div>
+        <div class="stats">
+          <div class="stat"><small><span class="dot" style="background:var(--todo)"></span>Todos</small><b>9</b><small>2 due today</small></div>
+          <div class="stat"><small><span class="dot" style="background:var(--thought)"></span>Thoughts</small><b>12</b><small>4 this week</small></div>
+          <div class="stat"><small><span class="dot" style="background:var(--review)"></span>Review</small><b>8</b><small>8 due now</small></div>
+        </div>
+        <div class="graph">
+          <div class="ghd"><span>Group by</span><div class="seg"><span class="on">Category</span><span>Type</span><span>Due</span><span>Status</span></div></div>
+          <svg id="cloud" width="294" height="230" viewBox="0 0 294 230"></svg>
+          <div class="legend"><span><i style="border-radius:4px"></i>thought</span><span><i style="border-radius:2px"></i>todo</span><span><i style="transform:rotate(45deg) scale(.85)"></i>review</span></div>
+          <div class="colorby">Color: Category ▾</div>
+        </div>
+        <div class="next"><span>💼</span>Work: 3 cards due<span class="pill">Review · 2 min</span></div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><i style="background:linear-gradient(135deg,#4FA3FF,#B07CFF)"></i>Cloud</div>
+        <div class="tab"><i style="border:2px solid var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab"><i style="border:2px solid var(--thought)"></i>Thoughts</div>
+        <div class="tab"><i style="border:2px solid var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>1</span>Cloud — grouped by category<span class="new">NEW</span></h3><p>Each cluster is a category. Colour comes from the category, <b>shape</b> shows the type (● thought, ■ todo, ◆ review). Pulsing = due. <b>Group by</b> switches clusters to Type, Due date or Status, and <b>Color</b> can be set separately (e.g. group by Due, color by Category). Tap a cluster to open that category.</p></div>
+  </div>
+
+  <!-- 2. CAPTURE with category -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content bgfaux"><div class="title">Cloud</div><div class="stats"><div class="stat"><b>9</b></div><div class="stat"><b>12</b></div><div class="stat"><b>8</b></div></div></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="typeseg"><div class="on">✓ Todo</div><div>💭 Thought</div><div>↻ Review</div></div>
+        <div class="input">Prep slides for the sync <span class="hl">Monday</span> <span class="hc">#work</span><span class="caret"></span></div>
+        <div class="catrow">
+          <span class="cc on" style="--c:var(--work)">💼 Work</span>
+          <span class="cc">🏠 Home</span>
+          <span class="cc">📚 Learning</span>
+          <span class="cc">💪 Health</span>
+          <span class="cc">🎨 Projects</span>
+        </div>
+        <div class="sendrow"><div class="mic">🎙</div><span class="hint">type # for category · ↵ save &amp; next</span><div class="send">↑</div></div>
+        <div class="kbd">
+          <div class="krow"><div class="k">q</div><div class="k">w</div><div class="k">e</div><div class="k">r</div><div class="k">t</div><div class="k">y</div><div class="k">u</div><div class="k">i</div><div class="k">o</div><div class="k">p</div></div>
+          <div class="krow"><div class="k">a</div><div class="k">s</div><div class="k">d</div><div class="k">f</div><div class="k">g</div><div class="k">h</div><div class="k">j</div><div class="k">k</div><div class="k">l</div></div>
+          <div class="krow"><div class="k w">⇧</div><div class="k">z</div><div class="k">x</div><div class="k">c</div><div class="k">v</div><div class="k">b</div><div class="k">n</div><div class="k">m</div><div class="k w">⌫</div></div>
+          <div class="krow"><div class="k w">123</div><div class="k sp">space</div><div class="k w" style="background:var(--todo);color:#000">save</div></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>2</span>Capture — category in one tap (or none)<span class="new">NEW</span></h3><p>A row of category chips sits above the keyboard. The likely one is pre-selected (last used, or matched from words like "slides" → Work), or type <b>#work</b> inline. Picking a category is optional: anything left uncategorized goes to an <b>Inbox</b> you can sort later, so saving is never slowed down.</p></div>
+  </div>
+
+  <!-- 3. CATEGORY DETAIL -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content" style="--c:var(--work)">
+        <div class="back">‹ Cloud</div>
+        <div class="chead"><div class="cicon">💼</div><div><div class="nm">Work</div><div class="ct">14 items · 3 need you</div></div><div class="edit">Edit</div></div>
+        <div class="mix"><div style="flex:4;background:var(--todo)"></div><div style="flex:5;background:var(--thought)"></div><div style="flex:5;background:var(--review)"></div></div>
+        <div class="mixl"><span><i style="background:var(--todo)"></i>4 todos</span><span><i style="background:var(--thought)"></i>5 thoughts</span><span><i style="background:var(--review)"></i>5 review</span></div>
+        <div class="deckbtn"><div>Review Work deck<small>3 of 5 cards due</small></div><div class="go">▶</div></div>
+        <div class="sec">Todos <a>See all</a></div>
+        <div class="row"><div class="check"></div><div><div class="t">Prep slides for the sync</div><div class="meta">Mon</div></div></div>
+        <div class="row"><div class="check"></div><div><div class="t">Send Q4 deck to Priya</div><div class="meta"><span class="due">Overdue · Fri</span></div></div></div>
+        <div class="sec">Thoughts <a>See all</a></div>
+        <div class="hscroll">
+          <div class="mini">What if standup was async on Fridays?<small>Tue</small></div>
+          <div class="mini">Dashboard for on-call load per person<small>Last week</small></div>
+          <div class="mini">Ask about the conference budget<small>Oct 30</small></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><i style="background:linear-gradient(135deg,#4FA3FF,#B07CFF)"></i>Cloud</div>
+        <div class="tab"><i style="border:2px solid var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab"><i style="border:2px solid var(--thought)"></i>Thoughts</div>
+        <div class="tab"><i style="border:2px solid var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>3</span>Category page<span class="new">NEW</span></h3><p>All three types for one area of life in one place: the mix bar, a "review just this deck" button, open todos and recent thoughts. <b>Edit</b> sets the name, emoji and colour. Tapping + here pre-fills the category. Categories are created inline (type <b>#newname</b>) or from a manage list.</p></div>
+  </div>
+
+  <!-- 4. THOUGHTS colored by category -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content">
+        <div class="title" style="color:var(--thought)">Thoughts</div>
+        <div class="sub">12 thoughts · 5 categories</div>
+        <div class="fchips"><span class="fc on">All</span><span class="fc">💼 Work<b>5</b></span><span class="fc">🎨 Projects<b>3</b></span><span class="fc">🏠 Home<b>2</b></span><span class="fc">💪 Health<b>2</b></span></div>
+        <div class="masonry">
+          <div class="tc" style="--c:var(--proj)"><span class="em">🎨</span>Plant watering tracker that uses the weather forecast<div class="when"><span>2h ago</span><span>Projects</span></div></div>
+          <div class="tc" style="--c:var(--home)"><span class="em">🏠</span>Gift idea for Sam: that ceramic pour-over from the café<div class="when"><span>Yesterday</span><span>Home</span></div></div>
+          <div class="tc" style="--c:var(--work)"><span class="em">💼</span>What if standup was async on Fridays?<div class="when"><span>Tue</span><span>Work</span></div></div>
+          <div class="tc" style="--c:var(--health)"><span class="em">💪</span>Running felt way easier after sleeping 8h. Pattern?<div class="when"><span>Last week</span><span>Health</span></div></div>
+          <div class="tc" style="--c:var(--proj)"><span class="em">🎨</span>Band name: Quiet Static<div class="when"><span>Oct 28</span><span>Projects</span></div></div>
+          <div class="tc" style="--c:#8E8E99"><span class="em">📥</span>"The Overstory" — book rec from Jordan<div class="when"><span>Oct 27</span><span>Inbox</span></div></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><i style="background:#333"></i>Cloud</div>
+        <div class="tab"><i style="border:2px solid var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab on"><i style="background:var(--thought)"></i>Thoughts</div>
+        <div class="tab"><i style="border:2px solid var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>4</span>Thoughts — tinted by category</h3><p>Each card takes its category's colour and emoji, so the wall reads at a glance. Filter chips at the top. Uncategorized thoughts show as grey 📥 Inbox, and a long-press lets you file them.</p></div>
+  </div>
+
+  <!-- 5. TODOS with categories -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content">
+        <div class="ghead"><div class="title" style="color:var(--todo)">Todos</div><span class="grpby">Group: Date ▾</span></div>
+        <div class="sub">9 open · 3 done this week</div>
+        <div class="fchips"><span class="fc on">All</span><span class="fc">💼 Work<b>4</b></span><span class="fc">🏠 Home<b>3</b></span><span class="fc">💪 Health<b>1</b></span><span class="fc">📚 Learning<b>1</b></span></div>
+        <div class="group">Today</div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Call the dentist about the crown</div><div class="meta"><span class="catpill" style="--c:var(--health)">💪 Health</span><span class="due">10:00 AM</span></div></div></div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Send Q4 deck to Priya</div><div class="meta"><span class="catpill" style="--c:var(--work)">💼 Work</span><span class="due">Overdue · Fri</span></div></div></div>
+        <div class="row todo done"><div class="check">✓</div><div><div class="t">Renew car registration</div><div class="meta"><span class="catpill" style="--c:var(--home)">🏠 Home</span></div></div></div>
+        <div class="group">Upcoming</div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Prep slides for the sync</div><div class="meta"><span class="catpill" style="--c:var(--work)">💼 Work</span>Mon</div></div></div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Book flights for Dec</div><div class="meta"><span class="catpill" style="--c:var(--home)">🏠 Home</span>Thu</div></div></div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Finish SwiftData course ch. 4</div><div class="meta"><span class="catpill" style="--c:var(--learn)">📚 Learning</span>Sat</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><i style="background:#333"></i>Cloud</div>
+        <div class="tab on"><i style="background:var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab"><i style="border:2px solid var(--thought)"></i>Thoughts</div>
+        <div class="tab"><i style="border:2px solid var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>5</span>Todos — filter or group by category</h3><p>Each row gets a small category pill. Filter chips narrow the list to one category. <b>Group: Date ▾</b> can switch to <b>Group: Category</b>, which turns the list into 💼 Work / 🏠 Home / … sections. Tap a row to check it off.</p></div>
+  </div>
+
+  <!-- 6. REVIEW per-category decks -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content">
+        <div class="title" style="color:var(--review)">Review</div>
+        <div class="sub">Card 3 of 8 due · streak 🔥 5 days</div>
+        <div class="fchips"><span class="fc on">All due<b>8</b></span><span class="fc">💼 Work<b>3</b></span><span class="fc">📚 Learning<b>4</b></span><span class="fc">💪 Health<b>1</b></span></div>
+        <div class="progress"><div></div></div>
+        <div class="deck">
+          <div class="card c3"></div>
+          <div class="card c2"></div>
+          <div class="card c1" id="flip" style="--c:var(--work)">
+            <div class="face">
+              <div><span class="catpill" style="--c:var(--work)">💼 Work</span><span class="seen">seen 3×</span></div>
+              <div class="q">What are the 3 pillars of the new on-call policy?</div>
+              <div class="tap">Tap to reveal</div>
+            </div>
+            <div class="face back">
+              <div><span class="catpill" style="--c:var(--work)">💼 Work</span></div>
+              <div class="a">1. Primary responds within 15 min<br>2. Handoff doc every Monday<br>3. Any page &gt; 2h gets a postmortem</div>
+              <div class="tap">Swipe ← again · → got it</div>
+            </div>
+          </div>
+        </div>
+        <div class="grades">
+          <div class="g" style="background:rgba(255,122,107,.15);color:#FF7A6B">Again<small>10 min</small></div>
+          <div class="g" style="background:rgba(255,181,71,.15);color:var(--thought)">Fuzzy<small>1 day</small></div>
+          <div class="g" style="background:rgba(52,199,89,.15);color:#34C759">Got it<small>4 days</small></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><i style="background:#333"></i>Cloud</div>
+        <div class="tab"><i style="border:2px solid var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab"><i style="border:2px solid var(--thought)"></i>Thoughts</div>
+        <div class="tab on"><i style="background:var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>6</span>Review — each category is a deck</h3><p>Review everything that's due, or just one category ("I have 2 minutes, just do Work"). The card's top edge and pill show its category. The same decks show up in the Dynamic Island, widgets and Siri ("review my Learning cards").</p></div>
+  </div>
+
+</div>
+<script>
+  // Cloud graph: clusters by category, colour = category, shape = type
+  const cats = [
+    { e:'💼', n:'Work',     c:'#64D2FF', x:78,  y:62,  items:'TTTTHHHHHRRRRR', due:3 },
+    { e:'🏠', n:'Home',     c:'#30D158', x:214, y:56,  items:'TTTHHR', due:0 },
+    { e:'🎨', n:'Projects', c:'#FF9F0A', x:152, y:118, items:'HHHT', due:0 },
+    { e:'💪', n:'Health',   c:'#FF6482', x:66,  y:160, items:'TRHH', due:1 },
+    { e:'📚', n:'Learning', c:'#BF5AF2', x:222, y:158, items:'TRRRRH', due:4 },
+  ];
+  const svg = document.getElementById('cloud'), NS = 'http://www.w3.org/2000/svg';
+  const mk = (t, a) => { const el = document.createElementNS(NS, t); for (const k in a) el.setAttribute(k, a[k]); svg.appendChild(el); return el; };
+  cats.forEach(cat => {
+    const n = cat.items.length, R = n > 1 ? 8.5 * Math.sqrt(n - 1) + 8 : 8;
+    mk('circle', { cx: cat.x, cy: cat.y, r: R + 6, fill: cat.c, 'fill-opacity': .09 });
+    let dueLeft = cat.due;
+    [...cat.items].forEach((t, i) => {
+      const a = i * 2.39996, d = i === 0 ? 0 : 8.5 * Math.sqrt(i) + 2;
+      const x = cat.x + Math.cos(a) * d, y = cat.y + Math.sin(a) * d * .9, s = i === 0 ? 6.5 : 3.8 + (i % 3) * .8;
+      let el;
+      if (t === 'H') el = mk('circle', { cx: x, cy: y, r: s, fill: cat.c });
+      else if (t === 'T') el = mk('rect', { x: x - s, y: y - s, width: 2 * s, height: 2 * s, rx: 2, fill: cat.c });
+      else {
+        el = mk('rect', { x: x - s * .85, y: y - s * .85, width: 1.7 * s, height: 1.7 * s, rx: 1, fill: cat.c, transform: `rotate(45 ${x} ${y})` });
+        if (dueLeft-- > 0) { const p = mk('circle', { cx: x, cy: y, r: s + 3, fill: 'none', stroke: cat.c, 'stroke-width': 1.2 });
+          const an = document.createElementNS(NS, 'animate'); an.setAttribute('attributeName', 'stroke-opacity'); an.setAttribute('values', '.9;0;.9'); an.setAttribute('dur', '1.8s'); an.setAttribute('repeatCount', 'indefinite'); p.appendChild(an); }
+      }
+    });
+    const lbl = mk('text', { x: cat.x, y: cat.y + R + 15, 'text-anchor': 'middle', 'font-size': 10.5, fill: cat.c, 'font-weight': 600 });
+    lbl.textContent = `${cat.e} ${cat.n} · ${n}`;
+  });
+  document.querySelectorAll('.row.todo').forEach(r => r.addEventListener('click', () => {
+    r.classList.toggle('done'); r.querySelector('.check').textContent = r.classList.contains('done') ? '✓' : '';
+  }));
+  document.getElementById('flip').addEventListener('click', e => e.currentTarget.classList.toggle('flipped'));
+</script>
+</body>
+</html>
