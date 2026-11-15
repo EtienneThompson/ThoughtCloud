@@ -128,7 +128,7 @@ public final class Library {
     // MARK: - Items
 
     @discardableResult
-    public func add(kind: ItemKind, title: String, body: String = "", categoryIDs: [UUID] = [], date: DetectedDate? = nil, addToCalendar: Bool = true) -> Item {
+    public func add(kind: ItemKind, title: String, body: String = "", categoryIDs: [UUID] = [], date: DetectedDate? = nil, event: EventInfo? = nil, addToCalendar: Bool = true) -> Item {
         let now = now
         var item = Item(kind: kind, title: title, body: body, categoryIDs: categoryIDs, createdAt: now)
         switch kind {
@@ -138,7 +138,7 @@ public final class Library {
         case .review:
             item.review = scheduler.initialState(now: now, rememberUntil: date?.date)
         case .event:
-            var event = EventInfo.make(from: date, now: now, calendar: calendar)
+            var event = event ?? EventInfo.make(from: date, now: now, calendar: calendar)
             event.addToCalendar = addToCalendar
             item.event = event
             item.review = eventScheduler.initialState(for: event, now: now)
