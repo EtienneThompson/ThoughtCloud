@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --todo: #4FA3FF;
+    --thought: #FFB547;
+    --review: #B07CFF;
+    --ios-bg: #0B0B0F;
+    --ios-card: #1A1A21;
+    --ios-card2: #23232C;
+    --ios-text: #F4F4F7;
+    --ios-dim: #8E8E99;
+    --ios-line: #2C2C36;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "SF Pro Text", var(--font-sans), system-ui, sans-serif; }
+  .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 20px; }
+  .cell { display: flex; flex-direction: column; align-items: center; }
+  .label { margin-top: 12px; width: 100%; max-width: 330px; }
+  .label h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--foreground); }
+  .label h3 span { display: inline-block; min-width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 10px; background: var(--secondary); color: var(--secondary-foreground); font-size: 11px; margin-right: 6px; }
+  .label p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted-foreground); }
+
+  /* phone */
+  .phone { width: 330px; height: 680px; border-radius: 48px; background: #000; padding: 10px; box-shadow: 0 0 0 1.5px #3a3a44, 0 12px 40px rgba(0,0,0,.35); position: relative; }
+  .screen { width: 100%; height: 100%; border-radius: 38px; background: var(--ios-bg); color: var(--ios-text); overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .status { height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 6px 26px 0; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .island { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 96px; height: 28px; background: #000; border-radius: 20px; z-index: 5; }
+  .content { flex: 1; padding: 4px 18px 0; overflow: hidden; position: relative; }
+  .title { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; margin: 6px 0 2px; }
+  .sub { color: var(--ios-dim); font-size: 13px; margin-bottom: 14px; }
+
+  /* tab bar */
+  .tabs { height: 78px; flex-shrink: 0; border-top: 0.5px solid var(--ios-line); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 8px; background: rgba(20,20,26,.92); position: relative; }
+  .tab { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--ios-dim); gap: 3px; width: 50px; }
+  .tab.on { color: var(--ios-text); }
+  .tab i { width: 22px; height: 22px; display: block; border-radius: 6px; }
+  .fab { width: 54px; height: 54px; border-radius: 27px; background: linear-gradient(135deg, var(--todo), var(--review)); margin-top: -22px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 300; color: #fff; box-shadow: 0 6px 20px rgba(130,120,255,.45); }
+
+  /* cloud */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .stat { background: var(--ios-card); border-radius: 14px; padding: 10px; }
+  .stat b { display: block; font-size: 22px; font-weight: 700; }
+  .stat small { font-size: 10.5px; color: var(--ios-dim); }
+  .stat .dot { width: 8px; height: 8px; border-radius: 4px; display: inline-block; margin-right: 4px; }
+  .graph { background: var(--ios-card); border-radius: 18px; height: 272px; position: relative; overflow: hidden; }
+  .graph-hd { position: absolute; top: 10px; left: 12px; font-size: 12px; color: var(--ios-dim); }
+  .seg { position: absolute; top: 8px; right: 10px; display: flex; background: var(--ios-card2); border-radius: 8px; padding: 2px; font-size: 10px; }
+  .seg span { padding: 3px 7px; border-radius: 6px; color: var(--ios-dim); }
+  .seg span.on { background: #3a3a46; color: var(--ios-text); }
+  .next { margin-top: 10px; background: var(--ios-card); border-radius: 14px; padding: 11px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .next .pill { margin-left: auto; font-size: 11px; padding: 4px 9px; border-radius: 10px; background: rgba(176,124,255,.18); color: var(--review); font-weight: 600; }
+
+  /* capture */
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #1C1C24; border-radius: 26px 26px 0 0; padding: 10px 16px 0; }
+  .grab { width: 36px; height: 5px; border-radius: 3px; background: #444; margin: 0 auto 12px; }
+  .typeseg { display: flex; background: var(--ios-card2); border-radius: 12px; padding: 3px; margin-bottom: 12px; }
+  .typeseg div { flex: 1; text-align: center; font-size: 13px; padding: 7px 0; border-radius: 9px; color: var(--ios-dim); font-weight: 500; }
+  .typeseg .on { background: rgba(79,163,255,.2); color: var(--todo); font-weight: 600; }
+  .input { font-size: 19px; line-height: 1.35; min-height: 56px; }
+  .input .hl { color: var(--todo); background: rgba(79,163,255,.12); border-radius: 5px; padding: 0 3px; }
+  .caret { display: inline-block; width: 2px; height: 21px; background: var(--todo); vertical-align: -4px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .chips { display: flex; gap: 6px; margin: 10px 0 10px; flex-wrap: wrap; }
+  .chip { font-size: 11.5px; padding: 5px 9px; border-radius: 10px; background: var(--ios-card2); color: var(--ios-dim); }
+  .chip.auto { background: rgba(79,163,255,.15); color: var(--todo); }
+  .sendrow { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; }
+  .hint { font-size: 11px; color: var(--ios-dim); }
+  .send { width: 34px; height: 34px; border-radius: 17px; background: var(--todo); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .mic { width: 34px; height: 34px; border-radius: 17px; background: var(--ios-card2); display: flex; align-items: center; justify-content: center; }
+  .kbd { background: #2A2A32; margin: 0 -16px; padding: 8px 3px 26px; display: grid; gap: 9px; }
+  .krow { display: flex; justify-content: center; gap: 5px; }
+  .k { width: 26px; height: 38px; background: #4A4A54; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .k.w { width: 40px; background: #3A3A42; font-size: 11px; }
+  .k.sp { width: 150px; font-size: 12px; color: #bbb; }
+  .bgfaux { opacity: .5; }
+
+  /* todos */
+  .group { font-size: 12px; font-weight: 600; color: var(--ios-dim); text-transform: uppercase; letter-spacing: .5px; margin: 14px 0 6px; }
+  .row { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-bottom: 0.5px solid var(--ios-line); cursor: pointer; }
+  .check { width: 22px; height: 22px; border-radius: 11px; border: 2px solid #4a4a56; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #000; transition: all .15s; }
+  .row.done .check { background: var(--todo); border-color: var(--todo); }
+  .row.done .t { color: var(--ios-dim); text-decoration: line-through; }
+  .t { font-size: 15px; }
+  .meta { font-size: 11.5px; color: var(--ios-dim); margin-top: 2px; }
+  .meta .due { color: #FF7A6B; }
+  .swipehint { position: relative; margin: 0 -18px; }
+  .swipehint .row { background: var(--ios-bg); transform: translateX(-120px); padding-left: 18px; padding-right: 18px; }
+  .swipeacts { position: absolute; right: 0; top: 0; bottom: 0; display: flex; }
+  .swipeacts div { width: 60px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; }
+
+  /* review */
+  .deck { position: relative; height: 350px; margin-top: 6px; perspective: 1000px; }
+  .card { position: absolute; left: 0; right: 0; height: 316px; border-radius: 24px; padding: 22px; }
+  .card.c3 { top: 24px; transform: scale(.9); background: #1E1A2A; }
+  .card.c2 { top: 12px; transform: scale(.95); background: #262035; }
+  .card.c1 { top: 0; background: linear-gradient(160deg, #3A2C5C, #231B38); box-shadow: 0 10px 30px rgba(0,0,0,.4); cursor: pointer; transform-style: preserve-3d; transition: transform .5s; }
+  .card.c1.flipped { transform: rotateY(180deg); }
+  .face { position: absolute; inset: 0; padding: 22px; backface-visibility: hidden; display: flex; flex-direction: column; }
+  .face.back { transform: rotateY(180deg); }
+  .tag { font-size: 11px; color: var(--review); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+  .q { font-size: 23px; font-weight: 650; line-height: 1.25; margin-top: 14px; letter-spacing: -.3px; }
+  .a { font-size: 15px; line-height: 1.5; margin-top: 12px; color: #ddd; }
+  .tap { margin-top: auto; text-align: center; font-size: 12px; color: var(--ios-dim); }
+  .grades { display: flex; gap: 8px; }
+  .g { flex: 1; text-align: center; padding: 12px 0; border-radius: 14px; font-size: 13px; font-weight: 600; }
+  .g small { display: block; font-size: 10px; font-weight: 500; opacity: .7; margin-top: 2px; }
+  .progress { height: 4px; background: var(--ios-card2); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+  .progress div { height: 100%; width: 37%; background: var(--review); }
+
+  /* thoughts */
+  .search { background: var(--ios-card); border-radius: 11px; padding: 8px 12px; font-size: 14px; color: var(--ios-dim); margin-bottom: 12px; }
+  .masonry { columns: 2; column-gap: 9px; }
+  .tc { break-inside: avoid; background: var(--ios-card); border-radius: 16px; padding: 12px; margin-bottom: 9px; font-size: 13.5px; line-height: 1.4; border-top: 3px solid var(--thought); }
+  .tc .when { font-size: 10.5px; color: var(--ios-dim); margin-top: 8px; display: flex; justify-content: space-between; }
+  .tc .link { color: var(--thought); }
+  .promote { display: flex; gap: 6px; margin-top: 8px; }
+  .promote span { white-space: nowrap; font-size: 10px; padding: 3px 7px; border-radius: 8px; background: var(--ios-card2); }
+
+  /* lock screen */
+  .lock { background: radial-gradient(120% 80% at 30% 10%, #3B2E6E 0%, #141226 55%, #07070C 100%); }
+  .clock { text-align: center; margin-top: 44px; }
+  .clock .d { font-size: 15px; font-weight: 500; opacity: .85; }
+  .clock .tm { font-size: 78px; font-weight: 700; letter-spacing: -2px; line-height: 1; margin-top: 2px; }
+  .lockw { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+  .ring { width: 58px; height: 58px; border-radius: 29px; background: rgba(255,255,255,.12); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; position: relative; }
+  .ring small { font-size: 8.5px; font-weight: 500; opacity: .8; }
+  .ring svg { position: absolute; inset: 0; }
+  .rect { width: 128px; height: 58px; border-radius: 16px; background: rgba(255,255,255,.12); padding: 8px 10px; font-size: 11px; line-height: 1.35; }
+  .rect b { font-size: 10px; opacity: .7; display: block; font-weight: 600; }
+  .di { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 270px; height: 70px; background: #000; border-radius: 34px; z-index: 6; display: flex; align-items: center; padding: 0 14px; gap: 10px; }
+  .di .ic { width: 38px; height: 38px; border-radius: 19px; background: rgba(176,124,255,.25); display: flex; align-items: center; justify-content: center; color: var(--review); font-weight: 700; font-size: 13px; }
+  .di .tx { font-size: 12px; flex: 1; }
+  .di .tx small { display: block; color: var(--ios-dim); font-size: 10.5px; }
+  .di .btn { font-size: 11px; background: var(--review); color: #000; font-weight: 700; padding: 6px 10px; border-radius: 12px; }
+  .siri { position: absolute; left: 12px; right: 12px; bottom: 96px; background: rgba(30,30,40,.82); backdrop-filter: blur(20px); border-radius: 22px; padding: 14px; }
+  .siri .said { font-size: 12px; color: var(--ios-dim); }
+  .siri .said b { color: var(--ios-text); font-weight: 500; }
+  .siri .res { margin-top: 10px; display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,.07); border-radius: 14px; padding: 10px; font-size: 13px; }
+  .siri .res i { width: 26px; height: 26px; border-radius: 8px; background: var(--review); flex-shrink: 0; display: block; }
+  .lockbtns { position: absolute; bottom: 32px; left: 36px; right: 36px; display: flex; justify-content: space-between; }
+  .lockbtns div { width: 46px; height: 46px; border-radius: 23px; background: rgba(255,255,255,.14); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 300; }
+  .lockbtns div.cap { background: linear-gradient(135deg, var(--todo), var(--review)); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 1. CLOUD -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content">
+        <div class="title">Cloud</div>
+        <div class="sub">Sunday, Nov 9 · 3 things need you today</div>
+        <div class="stats">
+          <div class="stat"><small><span class="dot" style="background:var(--todo)"></span>Todos</small><b>7</b><small>2 due today</small></div>
+          <div class="stat"><small><span class="dot" style="background:var(--thought)"></span>Thoughts</small><b>12</b><small>4 this week</small></div>
+          <div class="stat"><small><span class="dot" style="background:var(--review)"></span>Review</small><b>8</b><small>8 due now</small></div>
+        </div>
+        <div class="graph">
+          <div class="graph-hd">Your cloud</div>
+          <div class="seg"><span class="on">Bubbles</span><span>Links</span></div>
+          <svg width="294" height="272" viewBox="0 10 294 290">
+            <defs>
+              <radialGradient id="gT"><stop offset="0" stop-color="#4FA3FF" stop-opacity=".35"/><stop offset="1" stop-color="#4FA3FF" stop-opacity="0"/></radialGradient>
+              <radialGradient id="gH"><stop offset="0" stop-color="#FFB547" stop-opacity=".3"/><stop offset="1" stop-color="#FFB547" stop-opacity="0"/></radialGradient>
+              <radialGradient id="gR"><stop offset="0" stop-color="#B07CFF" stop-opacity=".4"/><stop offset="1" stop-color="#B07CFF" stop-opacity="0"/></radialGradient>
+            </defs>
+            <circle cx="82" cy="120" r="78" fill="url(#gT)"/>
+            <circle cx="210" cy="112" r="72" fill="url(#gH)"/>
+            <circle cx="150" cy="222" r="80" fill="url(#gR)"/>
+            <!-- links between items -->
+            <g stroke="#ffffff" stroke-opacity=".14" stroke-width="1">
+              <line x1="190" y1="92" x2="104" y2="104"/><line x1="226" y1="138" x2="168" y2="204"/>
+              <line x1="62" y1="150" x2="128" y2="236"/><line x1="232" y1="88" x2="248" y2="128"/>
+            </g>
+            <!-- todos -->
+            <g fill="#4FA3FF">
+              <circle cx="80" cy="112" r="15"/><circle cx="104" cy="104" r="9"/><circle cx="58" cy="94" r="7"/>
+              <circle cx="62" cy="150" r="10" /><circle cx="98" cy="142" r="6"/><circle cx="44" cy="124" r="5"/><circle cx="114" cy="128" r="5" fill-opacity=".45"/>
+            </g>
+            <circle cx="80" cy="112" r="19" fill="none" stroke="#FF7A6B" stroke-width="2" stroke-dasharray="3 3"/>
+            <!-- thoughts -->
+            <g fill="#FFB547">
+              <circle cx="210" cy="108" r="11"/><circle cx="190" cy="92" r="7"/><circle cx="232" cy="88" r="6"/><circle cx="226" cy="138" r="8"/>
+              <circle cx="248" cy="128" r="5"/><circle cx="196" cy="128" r="5"/><circle cx="244" cy="106" r="4"/><circle cx="212" cy="76" r="4"/>
+              <circle cx="178" cy="112" r="4"/><circle cx="256" cy="94" r="3.5"/><circle cx="206" cy="152" r="3.5"/><circle cx="236" cy="156" r="3"/>
+            </g>
+            <!-- reviews, pulse = due -->
+            <g fill="#B07CFF">
+              <circle cx="150" cy="222" r="14"><animate attributeName="r" values="14;16;14" dur="2s" repeatCount="indefinite"/></circle>
+              <circle cx="128" cy="236" r="9"/><circle cx="174" cy="240" r="10"/><circle cx="168" cy="204" r="7"/>
+              <circle cx="134" cy="204" r="6"/><circle cx="152" cy="256" r="6"/><circle cx="190" cy="222" r="5"/><circle cx="114" cy="214" r="5"/>
+            </g>
+            <text x="82" y="190" fill="#4FA3FF" font-size="10" text-anchor="middle" font-weight="600">TODOS</text>
+            <text x="216" y="182" fill="#FFB547" font-size="10" text-anchor="middle" font-weight="600">THOUGHTS</text>
+            <text x="150" y="288" fill="#B07CFF" font-size="10" text-anchor="middle" font-weight="600">REVIEW</text>
+          </svg>
+        </div>
+        <div class="next"><span style="width:8px;height:8px;border-radius:4px;background:var(--review)"></span>8 cards ready to review<span class="pill">Start · 3 min</span></div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><i style="background:linear-gradient(135deg,#4FA3FF,#B07CFF)"></i>Cloud</div>
+        <div class="tab"><i style="border:2px solid var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab"><i style="border:2px solid var(--thought)"></i>Thoughts</div>
+        <div class="tab"><i style="border:2px solid var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>1</span>Cloud (home)</h3><p>Every item is a bubble, clustered by type. Size = urgency/age, dashed ring = overdue, pulsing = due for review. Tap a cluster to jump in. "Links" mode shows connections between items (e.g. a thought that spawned a todo).</p></div>
+  </div>
+
+  <!-- 2. CAPTURE -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content bgfaux"><div class="title">Cloud</div><div class="stats"><div class="stat"><b>7</b></div><div class="stat"><b>12</b></div><div class="stat"><b>8</b></div></div></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="typeseg"><div class="on">✓ Todo</div><div>💭 Thought</div><div>↻ Review</div></div>
+        <div class="input">Call the dentist about the crown <span class="hl">tomorrow at 10</span><span class="caret"></span></div>
+        <div class="chips"><span class="chip auto">📅 Tomorrow 10:00</span><span class="chip auto">Auto-detected: Todo</span><span class="chip">+ tag</span></div>
+        <div class="sendrow"><div class="mic">🎙</div><span class="hint">↵ save &amp; next · swipe ↔ to change type</span><div class="send">↑</div></div>
+        <div class="kbd">
+          <div class="krow"><div class="k">q</div><div class="k">w</div><div class="k">e</div><div class="k">r</div><div class="k">t</div><div class="k">y</div><div class="k">u</div><div class="k">i</div><div class="k">o</div><div class="k">p</div></div>
+          <div class="krow"><div class="k">a</div><div class="k">s</div><div class="k">d</div><div class="k">f</div><div class="k">g</div><div class="k">h</div><div class="k">j</div><div class="k">k</div><div class="k">l</div></div>
+          <div class="krow"><div class="k w">⇧</div><div class="k">z</div><div class="k">x</div><div class="k">c</div><div class="k">v</div><div class="k">b</div><div class="k">n</div><div class="k">m</div><div class="k w">⌫</div></div>
+          <div class="krow"><div class="k w">123</div><div class="k sp">space</div><div class="k w" style="background:var(--todo);color:#000">save</div></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>2</span>Capture — one field, zero forms</h3><p>Tap + (or Action button / Siri / widget) and the keyboard is already up. Just type. The app guesses the type ("call…tomorrow" → Todo, "?" or "remember that…" → Review) and you can swipe to override. Return saves and clears for the next one — rapid-fire brain dump.</p></div>
+  </div>
+
+  <!-- 3. TODOS -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content">
+        <div class="title" style="color:var(--todo)">Todos</div>
+        <div class="sub">7 open · 3 done this week</div>
+        <div class="group">Today</div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Call the dentist about the crown</div><div class="meta"><span class="due">10:00 AM</span></div></div></div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Send Q4 deck to Priya</div><div class="meta"><span class="due">Overdue · Fri</span> · work</div></div></div>
+        <div class="row todo done"><div class="check">✓</div><div><div class="t">Renew car registration</div></div></div>
+        <div class="group">Upcoming</div>
+        <div class="swipehint">
+          <div class="swipeacts"><div style="background:#FF9F0A">Later</div><div style="background:#34C759;color:#000">Done</div></div>
+          <div class="row"><div class="check"></div><div><div class="t">Book flights for Dec</div><div class="meta">Thu</div></div></div>
+        </div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Return Amazon package</div><div class="meta">Sat · from a thought 💭</div></div></div>
+        <div class="group">Someday</div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Fix the squeaky closet door</div></div></div>
+        <div class="row todo"><div class="check"></div><div><div class="t">Learn to make pho</div></div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><i style="background:#333"></i>Cloud</div>
+        <div class="tab on"><i style="background:var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab"><i style="border:2px solid var(--thought)"></i>Thoughts</div>
+        <div class="tab"><i style="border:2px solid var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>3</span>Todos — tap to check (try it)</h3><p>Auto-grouped into Today / Upcoming / Someday — no date means Someday, no decision required. Swipe left for Done or Later (snooze). Small "from a thought" link when a todo was promoted from an idea.</p></div>
+  </div>
+
+  <!-- 4. REVIEW -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content">
+        <div class="title" style="color:var(--review)">Review</div>
+        <div class="sub">Card 3 of 8 due · streak 🔥 5 days</div>
+        <div class="progress"><div></div></div>
+        <div class="deck">
+          <div class="card c3"></div>
+          <div class="card c2"></div>
+          <div class="card c1" id="flip">
+            <div class="face">
+              <div class="tag">Work · seen 3×</div>
+              <div class="q">What are the 3 pillars of the new on-call policy?</div>
+              <div class="tap">Tap to reveal</div>
+            </div>
+            <div class="face back">
+              <div class="tag">Answer</div>
+              <div class="a">1. Primary responds within 15 min<br>2. Handoff doc every Monday<br>3. Any page &gt; 2h gets a postmortem</div>
+              <div class="tap">Swipe ← again · → got it</div>
+            </div>
+          </div>
+        </div>
+        <div class="grades">
+          <div class="g" style="background:rgba(255,122,107,.15);color:#FF7A6B">Again<small>10 min</small></div>
+          <div class="g" style="background:rgba(255,181,71,.15);color:var(--thought)">Fuzzy<small>1 day</small></div>
+          <div class="g" style="background:rgba(52,199,89,.15);color:#34C759">Got it<small>4 days</small></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><i style="background:#333"></i>Cloud</div>
+        <div class="tab"><i style="border:2px solid var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab"><i style="border:2px solid var(--thought)"></i>Thoughts</div>
+        <div class="tab on"><i style="background:var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>4</span>Review — flashcards (tap the card)</h3><p>Spaced repetition under the hood: cards you know come back less often, ones you miss come back sooner. Swipe or tap a grade. Cards don't need a strict Q/A — a single line works too ("Mom's flight lands 3:40 Thursday"); the back is optional.</p></div>
+  </div>
+
+  <!-- 5. THOUGHTS -->
+  <div class="cell">
+    <div class="phone"><div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="content">
+        <div class="title" style="color:var(--thought)">Thoughts</div>
+        <div class="search">🔍 Search thoughts</div>
+        <div class="masonry">
+          <div class="tc">App idea: a plant watering tracker that uses the weather forecast<div class="promote"><span>→ Todo</span><span>→ Review</span></div><div class="when"><span>2h ago</span></div></div>
+          <div class="tc">Gift idea for Sam — that ceramic pour-over thing from the café<div class="when"><span>Yesterday</span><span class="link">🔗 1</span></div></div>
+          <div class="tc">What if standup was async on Fridays?<div class="when"><span>Tue</span></div></div>
+          <div class="tc">Book rec from Jordan: "The Overstory"<div class="when"><span>Mon</span><span class="link">→ Todo</span></div></div>
+          <div class="tc">Running felt way easier after sleeping 8h. Pattern?<div class="when"><span>Last week</span></div></div>
+          <div class="tc">Name for the band: Quiet Static<div class="when"><span>Oct 28</span></div></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><i style="background:#333"></i>Cloud</div>
+        <div class="tab"><i style="border:2px solid var(--todo)"></i>Todos</div>
+        <div class="fab">+</div>
+        <div class="tab on"><i style="background:var(--thought)"></i>Thoughts</div>
+        <div class="tab"><i style="border:2px solid var(--review)"></i>Review</div>
+      </div>
+    </div></div>
+    <div class="label"><h3><span>5</span>Thoughts — a scrollable idea wall</h3><p>Low-pressure, newest first. The key action is <b>promote</b>: turn a thought into a Todo or a Review card in one tap (it stays linked, which feeds the Links graph). Long-press to link two thoughts together.</p></div>
+  </div>
+
+  <!-- 6. ECOSYSTEM -->
+  <div class="cell">
+    <div class="phone"><div class="screen lock">
+      <div class="di"><div class="ic">3/8</div><div class="tx">Reviewing<small>On-call policy pillars</small></div><div class="btn">Got it</div></div>
+      <div class="status" style="opacity:0"><span>.</span></div>
+      <div class="content">
+        <div class="clock"><div class="d">Sunday, November 9</div><div class="tm">9:41</div></div>
+        <div class="lockw">
+          <div class="ring"><svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="26" fill="none" stroke="#4FA3FF" stroke-width="3" stroke-dasharray="60 200" stroke-linecap="round" transform="rotate(-90 29 29)"/></svg>7<small>todos</small></div>
+          <div class="ring"><svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="26" fill="none" stroke="#B07CFF" stroke-width="3" stroke-dasharray="130 200" stroke-linecap="round" transform="rotate(-90 29 29)"/></svg>8<small>review</small></div>
+          <div class="rect"><b>NEXT UP</b>Call the dentist · 10:00</div>
+        </div>
+      </div>
+      <div class="siri">
+        <div class="said">"Hey Siri, <b>ThoughtCloud remember Mom's flight lands at 3:40 Thursday</b>"</div>
+        <div class="res"><i></i><div>Added to <b style="color:var(--review)">Review</b><br><span style="font-size:11px;color:var(--ios-dim)">First reminder tonight at 8 PM</span></div></div>
+      </div>
+      <div class="lockbtns"><div>🔦</div><div class="cap">+</div></div>
+    </div></div>
+    <div class="label"><h3><span>6</span>Everywhere on the iPhone</h3><p><b>Dynamic Island</b> Live Activity during a review session (grade without opening the app). <b>Lock-screen widgets</b> for counts + next todo. <b>Siri / Shortcuts</b>: "remember…", "add todo…", "I had a thought…". <b>Action button &amp; Control Center</b> open capture directly. Plus Share Sheet → Thought.</p></div>
+  </div>
+
+</div>
+<script>
+  document.querySelectorAll('.row.todo').forEach(r => r.addEventListener('click', () => {
+    r.classList.toggle('done'); r.querySelector('.check').textContent = r.classList.contains('done') ? '✓' : '';
+  }));
+  document.getElementById('flip').addEventListener('click', e => e.currentTarget.classList.toggle('flipped'));
+</script>
+</body>
+</html>
